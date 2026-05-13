@@ -120,17 +120,6 @@ bot.on("message", async (msg) => {
 
     const typing = () => bot.sendChatAction(chatId, "typing");
 
-    // Step 1
-    await delay(500);
-    await typing();
-    await delay(1000);
-
-    searching = await bot.sendMessage(
-      chatId,
-      `⏳ <b>Memproses permintaan...</b>`,
-      { parse_mode: "HTML" }
-    );
-
     // Step 2
     await delay(800);
     await typing();
@@ -145,43 +134,15 @@ bot.on("message", async (msg) => {
       }
     );
 
-    // Step 3
-    await delay(1000);
-    await typing();
-    await delay(800);
-
-    await bot.editMessageText(
-      `📡 <b>Menghubungi server WhatsApp...</b>`,
-      {
-        chat_id: chatId,
-        message_id: searching.message_id,
-        parse_mode: "HTML"
-      }
-    );
-
     let resultText = `\n`;
 
     for (const num of numbers) {
       const { clean, exists } = await checkWANumber(num);
 
       resultText +=
-        `📱 <code>${clean}</code>\n` +
-        `└ ${exists ? "✅ Terdaftar" : "❌ Tidak Terdaftar"}\n\n`;
+        `📱─⪼ [ <code>${clean}</code> ]\n` +
+        ` └⪼ ${exists ? "✅ Yaak" : "❌ Tidak"}\n\n`;
     }
-
-    // Step 4
-    await delay(1200);
-    await typing();
-    await delay(800);
-
-    await bot.editMessageText(
-      `🧩 <b>Memproses hasil...</b>`,
-      {
-        chat_id: chatId,
-        message_id: searching.message_id,
-        parse_mode: "HTML"
-      }
-    );
 
     // Step 5
     await delay(1000);
