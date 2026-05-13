@@ -88,8 +88,7 @@ async function checkWANumber(phoneNumber) {
 // ── Telegram Bot ── //
 bot.onText(/\/start/, (msg) => {
   bot.sendMessage(msg.chat.id,
-    `👋 *Halo!* Saya bot cek nomor WhatsApp\\.\n\n` +
-    `Kirim nomor HP dengan format:\n`,
+    `Gwsh yapping send aj lngsng no ny\\.\n\n`,
     { parse_mode: "Markdown" }
   );
 });
@@ -120,7 +119,10 @@ bot.on("message", async (msg) => {
 
     const typing = () => bot.sendChatAction(chatId, "typing");
 
-    // Step 2
+searching = await bot.sendMessage(chatId, `⏳ <b>Memproses...</b>`, {
+  parse_mode: "HTML"
+});
+
     await delay(800);
     await typing();
     await delay(800);
