@@ -119,9 +119,9 @@ bot.on("message", async (msg) => {
 
     const typing = () => bot.sendChatAction(chatId, "typing");
 
-searching = await bot.sendMessage(chatId, `⏳ <b>Memproses...</b>`, {
-  parse_mode: "HTML"
-});
+    searching = await bot.sendMessage(chatId, `⏳ <b>Memproses...</b>`, {
+      parse_mode: "HTML"
+    });
 
     await delay(800);
     await typing();
@@ -136,17 +136,38 @@ searching = await bot.sendMessage(chatId, `⏳ <b>Memproses...</b>`, {
       }
     );
 
-    let resultText = `\n`;
+    let notRegistered = [];
+    let registered = [];
 
     for (const num of numbers) {
       const { clean, exists } = await checkWANumber(num);
-
-      resultText +=
-        `📱─⪼ [ <code>${clean}</code> ]\n` +
-        ` └⪼ ${exists ? "✅ Yaak" : "❌ Tidak"}\n\n`;
+      if (exists) {
+        registered.push(clean);
+      } else {
+        notRegistered.push(clean);
+      }
     }
 
-    // Step 5
+    let resultText = `\n`;
+
+    if (notRegistered.length) {
+      resultText += `❌ <b>Tidak Terdaftar</b>\n`;
+      for (const num of notRegistered) {
+        resultText +=
+          `📱─⪼ [ <code>${num}</code> ]\n` +
+          ` └⪼ ❌ Tidak\n\n`;
+      }
+    }
+
+    if (registered.length) {
+      resultText += `✅ <b>Terdaftar</b>\n`;
+      for (const num of registered) {
+        resultText +=
+          `📱─⪼ [ <code>${num}</code> ]\n` +
+          ` └⪼ ✅ Yaak\n\n`;
+      }
+    }
+
     await delay(1000);
     await typing();
     await delay(600);
