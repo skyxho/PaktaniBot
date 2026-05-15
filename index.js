@@ -1,3 +1,4 @@
+import { fileURLToPath } from "url";
 import makeWASocket, {
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
@@ -8,6 +9,12 @@ import TelegramBot from "node-telegram-bot-api";
 import pino from "pino";
 import chalk from "chalk";
 import readline from "readline";
+import fs from "fs";
+import path from "path";
+
+// ── DIRNAME ── //
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
 
 const tg = "8797409935:AAHQX1Gsq57H2VOBD4Q53JmrYF7ly_I_MxI";
 const bot = new TelegramBot(tg, { polling: true });
@@ -78,7 +85,7 @@ async function startWA() {
   waSocket.ev.on("creds.update", saveCreds);
 }
 
-// ── Cek Nomor  ── //
+// ── Cek Nomor ── //
 async function checkWANumber(phoneNumber) {
   const clean = phoneNumber.replace(/[^0-9]/g, "");
   const [result] = await waSocket.onWhatsApp(`${clean}@s.whatsapp.net`);
@@ -86,13 +93,6 @@ async function checkWANumber(phoneNumber) {
 }
 
 // ── Telegram Bot ── //
-bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id,
-    `Gwsh yapping send aj lngsng no ny\\.\n\n`,
-    { parse_mode: "Markdown" }
-  );
-});
-
 bot.on("message", async (msg) => {
   let searching;
 
@@ -113,13 +113,13 @@ bot.on("message", async (msg) => {
     if (!isConnected) {
       return bot.sendMessage(
         chatId,
-        "⏳ WhatsApp belum terhubung, coba beberapa saat lagi."
+        "⏳ WhatsApp пока не подключен, пожалуйста, попробуйте позже..."
       );
     }
 
     const typing = () => bot.sendChatAction(chatId, "typing");
 
-    searching = await bot.sendMessage(chatId, `⏳ <b>Memproses...</b>`, {
+    searching = await bot.sendMessage(chatId, `⏳ <b>процесс...</b>`, {
       parse_mode: "HTML"
     });
 
@@ -128,7 +128,7 @@ bot.on("message", async (msg) => {
     await delay(800);
 
     await bot.editMessageText(
-      `🔍 <b>Mencari nomor...</b>`,
+      `🔍 <b>поиск числа...</b>`,
       {
         chat_id: chatId,
         message_id: searching.message_id,
@@ -148,55 +148,105 @@ bot.on("message", async (msg) => {
       }
     }
 
-    let resultText = `\n`;
+    // ── Generate F ── //
+    const now = new Date();
+    const days = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+    const dayName = days[now.getDay()];
+    const dd      = String(now.getDate()).padStart(2, "0");
+    const mm      = String(now.getMonth() + 1).padStart(2, "0");
+    const yyyy    = now.getFullYear();
+    const hh      = String(now.getHours()).padStart(2, "0");
+    const min     = String(now.getMinutes()).padStart(2, "0");
 
-    if (notRegistered.length) {
-      resultText += `❌ <b>Tidak Terdaftar</b>\n`;
-      for (const num of notRegistered) {
-        resultText +=
-          `📱─⪼ [ <code>${num}</code> ]\n` +
-          ` └⪼ ❌ Tidak\n\n`;
-      }
-    }
+    const baseName = `${dd}-${mm}-${yyyy}_${hh}-${min}_${dayName}`;
+    const tmpDir   = path.join(__dirname, "tmp_results");
+    if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir);
 
-    if (registered.length) {
-      resultText += `✅ <b>Terdaftar</b>\n`;
-      for (const num of registered) {
-        resultText +=
-          `📱─⪼ [ <code>${num}</code> ]\n` +
-          ` └⪼ ✅ Yaak\n\n`;
-      }
-    }
+    const fileNotReg = path.join(tmpDir, `${baseName}_tidak-terdaftar.txt`);
+    const fileReg    = path.join(tmpDir, `${baseName}_terdaftar.txt`);
+
+    const headerNotReg =
+      `=== HASIL CEK WHATSAPP ===\n` +
+      `Tanggal : ${dd}/${mm}/${yyyy} ${hh}:${min} (${dayName})\n` +
+      `Status  : Tidak Terdaftar\n` +
+      `Total   : ${notRegistered.length} nomor\n` +
+      `${"=".repeat(30)}\n\n`;
+
+    const headerReg =
+      `=== HASIL CEK WHATSAPP ===\n` +
+      `Tanggal : ${dd}/${mm}/${yyyy} ${hh}:${min} (${dayName})\n` +
+      `Status  : Terdaftar\n` +
+      `Total   : ${registered.length} nomor\n` +
+      `${"=".repeat(30)}\n\n`;
+
+    fs.writeFileSync(
+      fileNotReg,
+      headerNotReg + (notRegistered.length ? notRegistered.join("\n") : "(kosong)")
+    );
+    fs.writeFileSync(
+      fileReg,
+      headerReg + (registered.length ? registered.join("\n") : "(kosong)")
+    );
 
     await delay(1000);
     await typing();
     await delay(600);
 
-    await bot.editMessageText(resultText, {
+    const summaryText =
+      `📊 <b>Общие ( ${numbers.length} )</b>\n\n` +
+      `❌ Tidak : <b>${notRegistered.length}</b> nomor\n` +
+      `✅ Yakk : <b>${registered.length}</b> nomor`;
+
+    await bot.editMessageText(summaryText, {
       chat_id: chatId,
       message_id: searching.message_id,
-      parse_mode: "HTML"
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: `❌ Get File (${notRegistered.length})`, callback_data: `file_notReg_${baseName}` }],
+          [{ text: `✅ Get File (${registered.length})`,          callback_data: `file_Reg_${baseName}` }]
+        ]
+      }
     });
+
+    if (!global._resultFiles) global._resultFiles = {};
+    global._resultFiles[`file_notReg_${baseName}`] = fileNotReg;
+    global._resultFiles[`file_Reg_${baseName}`]    = fileReg;
 
   } catch (err) {
     console.error(err);
-
     if (searching) {
       await bot.editMessageText(
         `⚠️ <b>Gagal mengecek nomor</b>\n\n<code>${err.message}</code>`,
-        {
-          chat_id: msg.chat.id,
-          message_id: searching.message_id,
-          parse_mode: "HTML"
-        }
+        { chat_id: msg.chat.id, message_id: searching.message_id, parse_mode: "HTML" }
       );
     } else {
-      await bot.sendMessage(
-        msg.chat.id,
-        `⚠️ Gagal mengecek nomor\n\n${err.message}`
-      );
+      await bot.sendMessage(msg.chat.id, `⚠️ Gagal mengecek nomor\n\n${err.message}`);
     }
   }
+});
+
+// ── Handler callback_query ── //
+bot.on("callback_query", async (query) => {
+  const chatId = query.message.chat.id;
+  const data   = query.data;
+
+  if (!data.startsWith("file_notReg_") && !data.startsWith("file_Reg_")) return;
+
+  await bot.answerCallbackQuery(query.id, { text: "⏳ Mengambil file..." });
+
+  const filePath = global._resultFiles?.[data];
+
+  if (!filePath || !fs.existsSync(filePath)) {
+    return bot.sendMessage(chatId, "⚠️ File tidak ditemukan atau sudah dihapus.");
+  }
+
+  const isNotReg = data.startsWith("file_notReg_");
+  const caption  = isNotReg
+    ? `❌ <b>File Tidak Terdaftar</b>`
+    : `✅ <b>File Terdaftar</b>`;
+
+  await bot.sendDocument(chatId, filePath, { caption, parse_mode: "HTML" });
 });
 
 // ── Start ── //
